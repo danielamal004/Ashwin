@@ -1,0 +1,16 @@
+# Tasks
+
+- [ ] Initialize Project Structure
+    - [/] Create implementation plan <!-- id: 0 -->
+    - [ ] Initialize Vite React application in `client` directory <!-- id: 1 -->
+    - [ ] Install Tailwind CSS and dependencies <!-- id: 2 -->
+- [ ] Implement Design System
+    - [ ] Configure Tailwind theme (colors, fonts) <!-- id: 3 -->
+    - [ ] Create base UI components (Button, Card, Input) <!-- id: 4 -->
+- [ ] Develop Main Website
+    - [ ] Create Layout and Sidebar/Navbar <!-- id: 5 -->
+    - [ ] Implement Landing Page (Visionary AI Scan) with provided copy <!-- id: 6 -->
+    - [ ] Implement "Real-Time Eye Disease Prediction" feature page <!-- id: 7 -->
+- [ ] Verification
+    - [ ] Verify responsive design <!-- id: 8 -->
+    - [ ] Verify content accuracy <!-- id: 9 -->

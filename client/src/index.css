@@ -1,0 +1,10 @@
+/* ignore the error below, it's a false positive in some editors */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-900 text-white antialiased;
+  }
+}
