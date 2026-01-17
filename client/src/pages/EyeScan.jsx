@@ -7,8 +7,7 @@ import { Play, Square } from 'lucide-react';
 
 const EyeScan = () => {
     const navigate = useNavigate();
-    const [isCameraActive, setIsCameraActive] = useState(false);
-    const [isScanning, setIsScanning] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState(null);
 
     const handleStartScan = () => {
@@ -23,9 +22,11 @@ const EyeScan = () => {
     };
 
     const processFrame = useCallback(async (imageSrc) => {
-        // Stop scanning immediately upon capture
+        // Stop scanning but keep camera active purely for visual continuity until we have a result
+        // or show a frozen frame. For now, let's stop scanning logic.
         setIsScanning(false);
-        setIsCameraActive(false);
+        setIsProcessing(true);
+        setError(null);
 
         try {
             // Convert base64 to blob or send directly if backend supports it
@@ -38,7 +39,8 @@ const EyeScan = () => {
             });
 
             if (!response.ok) {
-                throw new Error('Analysis failed');
+                const errorData = await response.text();
+                throw new Error(errorData || 'Analysis failed');
             }
 
             const data = await response.json();
@@ -48,7 +50,10 @@ const EyeScan = () => {
 
         } catch (err) {
             console.error("Scanning error:", err);
-            setError("Failed to analyze image. Please try again.");
+            setError("Failed to analyze image. Please try again. (" + err.message + ")");
+            setIsCameraActive(false); // Stop camera on error so user sees the error state
+        } finally {
+            setIsProcessing(false);
         }
     }, [navigate]);
 
@@ -64,13 +69,13 @@ const EyeScan = () => {
                         </div>
                         {/* Control Buttons */}
                         <div className="flex gap-3">
-                            {!isCameraActive && (
+                            {!isCameraActive && !isProcessing && (
                                 <Button onClick={handleStartScan} className="gap-2">
                                     <Play className="h-4 w-4" /> Start Scan
                                 </Button>
                             )}
 
-                            {isCameraActive && (
+                            {isCameraActive && !isProcessing && (
                                 <Button variant="danger" onClick={handleStopScan} className="gap-2">
                                     <Square className="h-4 w-4" /> Stop Scan
                                 </Button>
@@ -79,34 +84,58 @@ const EyeScan = () => {
                     </div>
 
                     {/* Show Camera if active, otherwise intro placeholder */}
-                    {isCameraActive ? (
-                        <LiveCameraSection
-                            isActive={isCameraActive}
-                            isScanning={isScanning}
-                            onCapture={processFrame}
-                        />
-                    ) : (
-                        <div className="relative overflow-hidden rounded-2xl border-2 border-dashed border-slate-700 bg-slate-900/50 flex h-[400px] w-full items-center justify-center">
-                            <div className="text-center text-slate-500">
-                                <Play className="mx-auto mb-4 h-12 w-12 opacity-50 cursor-pointer hover:text-slate-400 transition-colors" onClick={handleStartScan} />
-                                <p>Ready to start scanning</p>
+                    <div className="relative">
+                        {isCameraActive || isProcessing ? (
+                            <LiveCameraSection
+                                isActive={isCameraActive}
+                                isScanning={isScanning}
+                                onCapture={processFrame}
+                            />
+                        ) : (
+                            <div className="relative overflow-hidden rounded-2xl border-2 border-dashed border-slate-700 bg-slate-900/50 flex h-[400px] w-full items-center justify-center">
+                                <div className="text-center text-slate-500">
+                                    <Play className="mx-auto mb-4 h-12 w-12 opacity-50 cursor-pointer hover:text-slate-400 transition-colors" onClick={handleStartScan} />
+                                    <p>Ready to start scanning</p>
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )}
+
+                        {/* Processing Overlay */}
+                        {isProcessing && (
+                            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/80 rounded-2xl backdrop-blur-sm">
+                                <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-500 border-t-transparent"></div>
+                                <p className="mt-4 text-lg font-semibold text-blue-400">Analyzing Image...</p>
+                            </div>
+                        )}
+
+                        {/* Error Overlay */}
+                        {error && !isCameraActive && (
+                            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/80 rounded-2xl backdrop-blur-sm p-6 text-center">
+                                <div className="mb-4 rounded-full bg-red-500/20 p-4">
+                                    <Square className="h-8 w-8 text-red-500" />
+                                </div>
+                                <h3 className="text-xl font-bold text-white mb-2">Scan Failed</h3>
+                                <p className="text-red-400 mb-6">{error}</p>
+                                <Button onClick={handleStartScan} className="gap-2">
+                                    <Play className="h-4 w-4" /> Try Again
+                                </Button>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Right Column: Analytics Status Only */}
                 <div className="w-full md:w-1/3 space-y-6">
                     {/* Show detection panel during active scan */}
-                    {isCameraActive && (
+                    {(isCameraActive || isProcessing) && (
                         <DetectionPanel
                             isCameraActive={isCameraActive}
-                            isScanning={isScanning}
+                            isScanning={isScanning || isProcessing}
                         />
                     )}
 
                     {/* Initial State Instructions */}
-                    {!isCameraActive && (
+                    {!isCameraActive && !isProcessing && (
                         <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/30 p-8 text-center">
                             <p className="text-slate-500">
                                 Click "Start Scan" to begin. The AI will guide you to align your eye and automatically capture the best image for analysis.
