@@ -130,7 +130,7 @@ DISEASES = [
     }
 ]
 
-@app.route('/predict', methods=['POST'])
+@app.route('/api/predict', methods=['POST'])
 def predict():
     # Simulate processing delay for realism
     time.sleep(1.5)

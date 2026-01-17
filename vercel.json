@@ -1,8 +1,17 @@
 {
-    "version": 2,
+    "rewrites": [
+        {
+            "source": "/api/(.*)",
+            "destination": "/api/index.py"
+        },
+        {
+            "source": "/(.*)",
+            "destination": "/index.html"
+        }
+    ],
     "builds": [
         {
-            "src": "server/app.py",
+            "src": "api/index.py",
             "use": "@vercel/python"
         },
         {
@@ -11,16 +20,6 @@
             "config": {
                 "distDir": "dist"
             }
-        }
-    ],
-    "routes": [
-        {
-            "src": "/api/(.*)",
-            "dest": "/server/app.py"
-        },
-        {
-            "src": "/(.*)",
-            "dest": "/client/$1"
         }
     ]
 }
