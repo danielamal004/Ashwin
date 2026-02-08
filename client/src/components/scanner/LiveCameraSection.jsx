@@ -12,6 +12,9 @@ const LiveCameraSection = ({ isScanning, onCapture, isActive, onDetectionUpdate 
     const requestRef = useRef();
     const captureTimeoutRef = useRef();
 
+    const [countdown, setCountdown] = useState(5);
+    const countdownIntervalRef = useRef();
+
     // Load models once
     useEffect(() => {
         if (isActive && !modelsLoaded) {
@@ -69,9 +72,22 @@ const LiveCameraSection = ({ isScanning, onCapture, isActive, onDetectionUpdate 
             });
         }
 
-        // Auto-capture logic
+        // Auto-capture logic: 5 seconds hold
         if (newStatus === 'perfect') {
             if (!captureTimeoutRef.current) {
+                setCountdown(5);
+
+                // Start countdown interval
+                countdownIntervalRef.current = setInterval(() => {
+                    setCountdown(prev => {
+                        if (prev <= 1) {
+                            clearInterval(countdownIntervalRef.current);
+                            return 0;
+                        }
+                        return prev - 1;
+                    });
+                }, 1000);
+
                 captureTimeoutRef.current = setTimeout(() => {
                     if (webcamRef.current) {
                         const imageSrc = webcamRef.current.getScreenshot();
@@ -79,13 +95,18 @@ const LiveCameraSection = ({ isScanning, onCapture, isActive, onDetectionUpdate 
                             onCapture(imageSrc);
                         }
                     }
-                }, 1000);
+                }, 5000);
             }
         } else {
             if (captureTimeoutRef.current) {
                 clearTimeout(captureTimeoutRef.current);
                 captureTimeoutRef.current = null;
             }
+            if (countdownIntervalRef.current) {
+                clearInterval(countdownIntervalRef.current);
+                countdownIntervalRef.current = null;
+            }
+            setCountdown(5);
         }
 
         if (isScanning && isActive) {
@@ -190,7 +211,8 @@ const LiveCameraSection = ({ isScanning, onCapture, isActive, onDetectionUpdate 
                             {scanStatus === 'perfect' && <CheckCircle2 className="h-5 w-5" strokeWidth={3} />}
                             {scanStatus === 'loading' && <Loader2 className="h-5 w-5 animate-spin text-blue-400" />}
                             <span className="font-bold tracking-wide text-lg">
-                                {scanStatus === 'loading' ? 'Initializing AI...' : instruction}
+                                {scanStatus === 'loading' ? 'Initializing AI...' :
+                                    scanStatus === 'perfect' ? `${instruction} (${countdown}s)` : instruction}
                             </span>
                         </div>
                     </div>
