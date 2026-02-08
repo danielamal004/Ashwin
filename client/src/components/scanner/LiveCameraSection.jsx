@@ -1,52 +1,120 @@
 import React, { useRef, useEffect, useState } from 'react';
 import Webcam from 'react-webcam';
-import { CameraOff, Scan, CheckCircle2 } from 'lucide-react';
+import { CameraOff, Scan, CheckCircle2, Loader2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { loadModels, detectEye, isEyeAligned } from '../../lib/eyeDetection';
 
-const LiveCameraSection = ({ isScanning, onCapture, isActive }) => {
+const LiveCameraSection = ({ isScanning, onCapture, isActive, onDetectionUpdate }) => {
     const webcamRef = useRef(null);
-    const [scanStatus, setScanStatus] = useState('idle'); // idle, searching, aligning, perfect
+    const [scanStatus, setScanStatus] = useState('idle'); // idle, loading, searching, aligning, perfect
     const [instruction, setInstruction] = useState('');
+    const [modelsLoaded, setModelsLoaded] = useState(false);
+    const requestRef = useRef();
+    const captureTimeoutRef = useRef();
 
+    // Load models once
     useEffect(() => {
-        if (!isActive || !isScanning) {
-            setScanStatus('idle');
-            setInstruction('');
+        if (isActive && !modelsLoaded) {
+            setScanStatus('loading');
+            loadModels().then(() => {
+                setModelsLoaded(true);
+                setScanStatus('searching');
+            }).catch(err => {
+                console.error("Failed to load models:", err);
+                setInstruction("Model loading failed");
+            });
+        }
+    }, [isActive, modelsLoaded]);
+
+    const performDetection = async () => {
+        if (!webcamRef.current || !webcamRef.current.video || webcamRef.current.video.readyState !== 4) {
+            requestRef.current = requestAnimationFrame(performDetection);
             return;
         }
 
-        // Start the simulation flow
-        setScanStatus('searching');
-        setInstruction('Place eye in box');
+        const video = webcamRef.current.video;
+        const result = await detectEye(video);
 
-        // Simulate detecting an eye after 2 seconds
-        const alignTimer = setTimeout(() => {
-            setScanStatus('aligning');
-            setInstruction('Hold still...');
-        }, 2000);
+        let newStatus = 'searching';
+        let newInstruction = 'Place eye in box';
+        let isDetected = false;
 
-        // Simulate perfect alignment after another 2 seconds
-        const perfectTimer = setTimeout(() => {
-            setScanStatus('perfect');
-            setInstruction('Perfect!');
+        if (result) {
+            isDetected = true;
+            const { leftEye, rightEye } = result;
+            const videoSize = { width: video.videoWidth, height: video.videoHeight };
 
-            // Auto capture shortly after perfect alignment
-            setTimeout(() => {
-                if (webcamRef.current) {
-                    const imageSrc = webcamRef.current.getScreenshot();
-                    if (imageSrc) {
-                        onCapture(imageSrc);
+            // Normalized target box matching the UI (0.3, 0.3, 0.4, 0.4)
+            const targetBox = { x: 0.3, y: 0.3, width: 0.4, height: 0.4 };
+
+            const leftAligned = isEyeAligned(leftEye, videoSize, targetBox);
+            const rightAligned = isEyeAligned(rightEye, videoSize, targetBox);
+
+            if (leftAligned || rightAligned) {
+                newStatus = 'perfect';
+                newInstruction = 'Perfect! Hold still...';
+            } else {
+                newStatus = 'aligning';
+                newInstruction = 'Center your eye';
+            }
+        }
+
+        setScanStatus(newStatus);
+        setInstruction(newInstruction);
+
+        if (onDetectionUpdate) {
+            onDetectionUpdate({
+                status: newStatus,
+                eyeDetected: isDetected
+            });
+        }
+
+        // Auto-capture logic
+        if (newStatus === 'perfect') {
+            if (!captureTimeoutRef.current) {
+                captureTimeoutRef.current = setTimeout(() => {
+                    if (webcamRef.current) {
+                        const imageSrc = webcamRef.current.getScreenshot();
+                        if (imageSrc) {
+                            onCapture(imageSrc);
+                        }
                     }
-                }
-            }, 800);
+                }, 1000);
+            }
+        } else {
+            if (captureTimeoutRef.current) {
+                clearTimeout(captureTimeoutRef.current);
+                captureTimeoutRef.current = null;
+            }
+        }
 
-        }, 4500);
+        if (isScanning && isActive) {
+            requestRef.current = requestAnimationFrame(performDetection);
+        }
+    };
+
+    useEffect(() => {
+        if (isActive && isScanning && modelsLoaded) {
+            requestRef.current = requestAnimationFrame(performDetection);
+        } else {
+            cancelAnimationFrame(requestRef.current);
+            if (captureTimeoutRef.current) {
+                clearTimeout(captureTimeoutRef.current);
+                captureTimeoutRef.current = null;
+            }
+            if (!isScanning) {
+                setScanStatus('searching');
+                setInstruction('Ready to scan');
+            }
+        }
 
         return () => {
-            clearTimeout(alignTimer);
-            clearTimeout(perfectTimer);
+            cancelAnimationFrame(requestRef.current);
+            if (captureTimeoutRef.current) {
+                clearTimeout(captureTimeoutRef.current);
+            }
         };
-    }, [isActive, isScanning, onCapture]);
+    }, [isActive, isScanning, modelsLoaded]);
 
     const videoConstraints = {
         width: 640,
@@ -59,6 +127,7 @@ const LiveCameraSection = ({ isScanning, onCapture, isActive }) => {
             case 'searching': return 'border-blue-500/50';
             case 'aligning': return 'border-yellow-500';
             case 'perfect': return 'border-emerald-500';
+            case 'loading': return 'border-slate-700 animate-pulse';
             default: return 'border-slate-700';
         }
     };
@@ -104,13 +173,13 @@ const LiveCameraSection = ({ isScanning, onCapture, isActive }) => {
                         scanStatus === 'perfect' ? 'border-emerald-500' : 'border-blue-500')}></div>
 
                     {/* Scanning Line */}
-                    {isScanning && scanStatus !== 'perfect' && (
+                    {isScanning && scanStatus !== 'perfect' && scanStatus !== 'loading' && (
                         <div className="absolute left-0 right-0 h-0.5 bg-blue-500/80 shadow-[0_0_15px_rgba(59,130,246,0.8)] animate-scan"></div>
                     )}
                 </div>
 
                 {/* Status Instruction */}
-                {isScanning && (
+                {(isScanning || scanStatus === 'loading') && (
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-32">
                         <div className={cn(
                             "px-6 py-2 rounded-full backdrop-blur-md border shadow-lg transition-all duration-300 flex items-center gap-2",
@@ -119,13 +188,16 @@ const LiveCameraSection = ({ isScanning, onCapture, isActive }) => {
                                 : "bg-black/60 border-white/10 text-white"
                         )}>
                             {scanStatus === 'perfect' && <CheckCircle2 className="h-5 w-5" strokeWidth={3} />}
-                            <span className="font-bold tracking-wide text-lg">{instruction}</span>
+                            {scanStatus === 'loading' && <Loader2 className="h-5 w-5 animate-spin text-blue-400" />}
+                            <span className="font-bold tracking-wide text-lg">
+                                {scanStatus === 'loading' ? 'Initializing AI...' : instruction}
+                            </span>
                         </div>
                     </div>
                 )}
 
                 {/* Rec Indicator */}
-                {isScanning && (
+                {isScanning && modelsLoaded && (
                     <div className="absolute top-4 right-4 flex items-center gap-2 bg-black/60 px-3 py-1 rounded-full backdrop-blur-md border border-white/10">
                         <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
                         <span className="text-xs font-bold font-mono text-red-400 tracking-wider">REC</span>

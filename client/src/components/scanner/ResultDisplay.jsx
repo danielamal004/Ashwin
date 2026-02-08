@@ -13,13 +13,15 @@ const ResultDisplay = ({ result, imageSrc }) => {
     const bgColor = isHealthy ? "bg-emerald-500/10" : "bg-amber-500/10";
 
     // Access the detailed data from the backend
-    // Fallback to top-level properties if 'data' object isn't present yet (backward compatibility during dev)
-    const data = result.data || result;
+    // Fallback to top-level properties if 'data' object isn't present yet
+    const data = result.data || result || {};
     const { overview, causes, symptoms, precautions, doctor_advice, recommendation } = data;
 
     const openHospitalSearch = () => {
         window.open("https://www.google.com/maps/search/eye+hospital+near+me", "_blank");
     };
+
+    const confidenceValue = typeof result.confidence === 'number' ? result.confidence : 0;
 
     return (
         <Card className={cn("mt-6 overflow-hidden border-2 transition-all duration-500 animate-in fade-in slide-in-from-bottom-4", borderColor, bgColor)}>
@@ -51,12 +53,12 @@ const ResultDisplay = ({ result, imageSrc }) => {
                         <div className="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
                             <div
                                 className={cn("h-2.5 rounded-full transition-all duration-1000 ease-out", isHealthy ? "bg-emerald-500" : "bg-amber-500")}
-                                style={{ width: `${result.confidence * 100}%` }}
+                                style={{ width: `${confidenceValue * 100}%` }}
                             ></div>
                         </div>
                         <div className="flex justify-between mt-1 text-xs text-slate-500">
                             <span>Confidence</span>
-                            <span>{(result.confidence * 100).toFixed(1)}%</span>
+                            <span>{(confidenceValue * 100).toFixed(1)}%</span>
                         </div>
                     </div>
 

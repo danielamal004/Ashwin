@@ -10,7 +10,7 @@ const Sidebar = () => {
     ];
 
     return (
-        <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-slate-800 bg-slate-950/50 backdrop-blur-xl transition-transform">
+        <aside className="hidden md:block fixed left-0 top-0 z-40 h-screen w-64 border-r border-slate-800 bg-slate-950/50 backdrop-blur-xl transition-transform">
             <div className="flex h-full flex-col px-3 py-4">
                 <div className="mb-10 flex items-center pl-2.5">
                     <Activity className="mr-3 h-8 w-8 text-blue-500" />

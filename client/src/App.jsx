@@ -5,17 +5,21 @@ import EyeScan from './pages/EyeScan';
 
 import ScanResult from './pages/ScanResult';
 
+import ErrorBoundary from './components/ErrorBoundary';
+
 function App() {
   return (
-    <Router>
-      <Layout>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/scan" element={<EyeScan />} />
-          <Route path="/result" element={<ScanResult />} />
-        </Routes>
-      </Layout>
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/scan" element={<EyeScan />} />
+            <Route path="/result" element={<ScanResult />} />
+          </Routes>
+        </Layout>
+      </Router>
+    </ErrorBoundary>
   );
 }
 

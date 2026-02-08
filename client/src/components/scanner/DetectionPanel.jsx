@@ -3,7 +3,7 @@ import { Card, CardContent } from '../ui/Card';
 import { Camera, Eye, Cpu, CheckCircle2, AlertCircle } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
-const DetectionPanel = ({ isCameraActive, isScanning, result }) => {
+const DetectionPanel = ({ isCameraActive, isScanning, eyeDetected, scanStatus }) => {
     const StatusItem = ({ icon: Icon, label, isActive, activeColor = "text-emerald-500", inactiveColor = "text-slate-600" }) => (
         <div className="flex items-center justify-between rounded-lg bg-slate-900/50 p-4 border border-slate-800">
             <div className="flex items-center gap-3">
@@ -30,13 +30,13 @@ const DetectionPanel = ({ isCameraActive, isScanning, result }) => {
             <StatusItem
                 icon={Eye}
                 label="Eye Detected"
-                isActive={isCameraActive} // Simulating eye detection when camera is on
+                isActive={isCameraActive && eyeDetected}
                 activeColor="text-blue-500"
             />
             <StatusItem
                 icon={Cpu}
                 label="AI Model"
-                isActive={isScanning}
+                isActive={isScanning && scanStatus !== 'loading'}
                 activeColor="text-purple-500"
             />
         </div>

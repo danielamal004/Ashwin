@@ -9,6 +9,9 @@ const EyeScan = () => {
     const navigate = useNavigate();
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState(null);
+    const [isCameraActive, setIsCameraActive] = useState(false);
+    const [isScanning, setIsScanning] = useState(false);
+    const [detectionResult, setDetectionResult] = useState({ eyeDetected: false, status: 'idle' });
 
     const handleStartScan = () => {
         setIsCameraActive(true);
@@ -19,7 +22,12 @@ const EyeScan = () => {
     const handleStopScan = () => {
         setIsCameraActive(false);
         setIsScanning(false);
+        setDetectionResult({ eyeDetected: false, status: 'idle' });
     };
+
+    const handleDetectionUpdate = useCallback((result) => {
+        setDetectionResult(result);
+    }, []);
 
     const processFrame = useCallback(async (imageSrc) => {
         // Stop scanning but keep camera active purely for visual continuity until we have a result
@@ -90,6 +98,7 @@ const EyeScan = () => {
                                 isActive={isCameraActive}
                                 isScanning={isScanning}
                                 onCapture={processFrame}
+                                onDetectionUpdate={handleDetectionUpdate}
                             />
                         ) : (
                             <div className="relative overflow-hidden rounded-2xl border-2 border-dashed border-slate-700 bg-slate-900/50 flex h-[400px] w-full items-center justify-center">
@@ -131,6 +140,8 @@ const EyeScan = () => {
                         <DetectionPanel
                             isCameraActive={isCameraActive}
                             isScanning={isScanning || isProcessing}
+                            eyeDetected={detectionResult.eyeDetected}
+                            scanStatus={detectionResult.status}
                         />
                     )}
 
